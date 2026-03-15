@@ -282,7 +282,8 @@ No credentials needed. Just reference the GitHub HTTPS repo URL in the Applicati
 Private repo
 Argo CD supports private repos over HTTPS or SSH, and also supports GitHub App credentials.
 Option A: SSH key
-% argocd repo add git@github.com:serhioms/platform-gitops.git \
+% export YOUR_GITHUB_USER=serhioms
+% argocd repo add git@github.com:$YOUR_GITHUB_USER/platform-gitops.git \
   --ssh-private-key-path ~/.ssh/id_ed25519
 Repository 'git@github.com:serhioms/platform-gitops.git' added
 
