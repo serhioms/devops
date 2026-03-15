@@ -42,9 +42,9 @@ Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
 zsh completions have been installed to:
   /opt/homebrew/share/zsh/site-functions
 
-cd ~/workspace/devops
-
 2) Create local Kubernetes cluster
+
+cd ~/workspace/k8s/kind
 
 % kind create cluster --name argo-lab --config ~/k8s/kind/kind-config.yaml
 Creating cluster "argo-lab" ...
@@ -66,6 +66,8 @@ CoreDNS is running at https://127.0.0.1:53970/api/v1/namespaces/kube-system/serv
 To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 
 3) Install Argo CD
+
+cd ~/workspace/devops/argo
 
 % kubectl create namespace argocd
 namespace/argocd created
