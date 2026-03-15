@@ -1,0 +1,293 @@
+Recommended architecture
+
+A clean local setup looks like this:
+
+GitHub repo 1: platform-gitops
+    Argo CD Application manifests
+    Kubernetes app manifests / Helm / Kustomize
+    Argo WorkflowTemplates
+kind cluster
+    argocd namespace
+    argo namespace for workflows
+Argo CD
+    watches GitHub repo
+    syncs app/workflow manifests into cluster
+Argo Workflows
+    runs workflows from templates already synced by Argo CD
+Optional:
+    GitHub Actions calls Argo CD API/CLI
+    GitHub webhook triggers Argo Workflow directly or through Argo Events
+    Argo CD is built for declarative GitOps from Git repos, and Argo Workflows exposes events/webhook-based submission for workflows.
+
+1) Install prerequisites
+
+% brew install kind argocd
+
+✔︎ JSON API cask.jws.json                                           Downloaded   15.4MB/ 15.4MB
+✔︎ JSON API formula.jws.json                                        Downloaded   31.9MB/ 31.9MB
+==> Fetching downloads for: kind and argocd
+✔︎ Bottle Manifest kind (0.31.0)                                    Downloaded    7.4KB/  7.4KB
+✔︎ Bottle Manifest argocd (3.3.3)                                   Downloaded    7.5KB/  7.5KB
+✔︎ Bottle kind (0.31.0)                                             Downloaded    3.9MB/  3.9MB
+✔︎ Bottle argocd (3.3.3)                                            Downloaded   78.7MB/ 78.7MB
+==> Pouring kind--0.31.0.arm64_sequoia.bottle.1.tar.gz
+🍺  /opt/homebrew/Cellar/kind/0.31.0: 10 files, 9.8MB
+==> Running `brew cleanup kind`...
+Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> Pouring argocd--3.3.3.arm64_sequoia.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/argocd/3.3.3: 10 files, 243.6MB
+==> Running `brew cleanup argocd`...
+==> Caveats
+zsh completions have been installed to:
+  /opt/homebrew/share/zsh/site-functions
+
+cd ~/workspace/devops
+
+2) Create local Kubernetes cluster
+
+% kind create cluster --name argo-lab --config ~/k8s/kind/kind-config.yaml
+Creating cluster "argo-lab" ...
+ ✓ Ensuring node image (kindest/node:v1.35.0) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-argo-lab"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-argo-lab
+
+% kubectl cluster-info --context kind-argo-lab
+Kubernetes control plane is running at https://127.0.0.1:53970
+CoreDNS is running at https://127.0.0.1:53970/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+3) Install Argo CD
+
+% kubectl create namespace argocd
+namespace/argocd created
+
+% kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-dex-server serverside-applied
+serviceaccount/argocd-notifications-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+serviceaccount/argocd-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-dex-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-notifications-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+role.rbac.authorization.k8s.io/argocd-server serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-server serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-dex-server serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-notifications-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-server serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-server serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-notifications-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-notifications-secret serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-dex-server serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-notifications-controller-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+service/argocd-server serverside-applied
+service/argocd-server-metrics serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-dex-server serverside-applied
+deployment.apps/argocd-notifications-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+deployment.apps/argocd-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-dex-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-notifications-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-server-network-policy serverside-applied
+
+# Wait for pods:
+% kubectl get pods -n argocd
+NAME                                                READY   STATUS    RESTARTS   AGE
+argocd-application-controller-0                     1/1     Running   0          86s
+argocd-applicationset-controller-6d94667dc8-st4rl   1/1     Running   0          86s
+argocd-dex-server-55f6cd99fd-d9q79                  1/1     Running   0          86s
+argocd-notifications-controller-84bb4bf479-hdrr6    1/1     Running   0          86s
+argocd-redis-6674d67c8b-fnkpd                       1/1     Running   0          86s
+argocd-repo-server-7db77b84dd-nlb4f                 1/1     Running   0          86s
+argocd-server-8bbddd74-7qjmb                        1/1     Running   0          86s
+
+This is the official getting-started install path for Argo CD. Argo CD docs note that pinning a release is better for production, but stable is fine for learning.
+
+Access Argo CD UI locally
+% kubectl port-forward svc/argocd-server -n argocd 8080:443
+Forwarding from 127.0.0.1:8080 -> 8080
+Forwarding from [::1]:8080 -> 8080
+
+do chrom https://localhost:8080?admin=xssfsFBx7HCi568Z
+
+Get initial admin password:
+% kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d && echo
+xssfsFBx7HCi568Z
+
+# Login with CLI: argocd login localhost:8080 --username admin --password <PASSWORD> --insecure
+% argocd login localhost:8080 --username admin --password xssfsFBx7HCi568Z --insecure
+'admin:login' logged in successfully
+Context 'localhost:8080' updated
+
+These steps are in the official getting started flow.
+
+4) Install Argo Workflows
+
+# Create namespace:
+% kubectl create namespace argo
+namespace/argo created
+
+# The official docs recommend installing from release manifests and note local clusters like kind/minikube are fine for quick testing.
+# For local/lab use, install a quick-start manifest from the current Argo Workflows release page. The docs intentionally recommend taking manifests from the release you choose.
+% export ARGO_WORKFLOWS_VERSION="v3.3.3"
+% kubectl apply --server-side -n argo -f "https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}/quick-start-minimal.yaml"
+customresourcedefinition.apiextensions.k8s.io/clusterworkflowtemplates.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/cronworkflows.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/workfloweventbindings.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/workflows.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/workflowtaskresults.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/workflowtasksets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/workflowtemplates.argoproj.io serverside-applied
+serviceaccount/argo serverside-applied
+serviceaccount/argo-server serverside-applied
+serviceaccount/github.com serverside-applied
+role.rbac.authorization.k8s.io/agent serverside-applied
+role.rbac.authorization.k8s.io/argo-role serverside-applied
+role.rbac.authorization.k8s.io/argo-server-role serverside-applied
+role.rbac.authorization.k8s.io/executor serverside-applied
+role.rbac.authorization.k8s.io/pod-manager serverside-applied
+role.rbac.authorization.k8s.io/submit-workflow-template serverside-applied
+role.rbac.authorization.k8s.io/workflow-manager serverside-applied
+clusterrole.rbac.authorization.k8s.io/argo-clusterworkflowtemplate-role serverside-applied
+clusterrole.rbac.authorization.k8s.io/argo-server-clusterworkflowtemplate-role serverside-applied
+rolebinding.rbac.authorization.k8s.io/agent-default serverside-applied
+rolebinding.rbac.authorization.k8s.io/argo-binding serverside-applied
+rolebinding.rbac.authorization.k8s.io/argo-server-binding serverside-applied
+rolebinding.rbac.authorization.k8s.io/executor-default serverside-applied
+rolebinding.rbac.authorization.k8s.io/github.com serverside-applied
+rolebinding.rbac.authorization.k8s.io/pod-manager-default serverside-applied
+rolebinding.rbac.authorization.k8s.io/workflow-manager-default serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argo-clusterworkflowtemplate-role-binding serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argo-server-clusterworkflowtemplate-role-binding serverside-applied
+configmap/artifact-repositories serverside-applied
+configmap/workflow-controller-configmap serverside-applied
+secret/argo-server-sso serverside-applied
+secret/argo-workflows-webhook-clients serverside-applied
+secret/my-minio-cred serverside-applied
+service/argo-server serverside-applied
+service/minio serverside-applied
+service/workflow-controller-metrics serverside-applied
+priorityclass.scheduling.k8s.io/workflow-controller serverside-applied
+deployment.apps/argo-server serverside-applied
+deployment.apps/minio serverside-applied
+deployment.apps/workflow-controller serverside-applied
+
+After install, verify:
+% kubectl get pods -n argo
+NAME                                   READY   STATUS    RESTARTS   AGE
+argo-server-f6d67b7bc-jnrjl            1/1     Running   0          33s
+minio-74f77b7959-v8nj5                 1/1     Running   0          33s
+workflow-controller-78884c886c-gtjnl   1/1     Running   0          33s
+
+# Expose Argo Server locally:
+% kubectl port-forward svc/argo-server -n argo 2746:2746
+Forwarding from 127.0.0.1:2746 -> 2746
+Forwarding from [::1]:2746 -> 2746
+
+# Open:
+do chrom https://localhost:2746
+Tell us what you want to use Argo for - we'll tell you how to do it.
+Machine Learning
+Data Processing
+Stream Processing
+CI/CD
+Infrastructure Automation
+Other...
+
+5) Install Argo CLI
+
+Install the CLI from release instructions, then test:
+% do argo install
+
+% argo version
+
+Argo Workflows documents the argo CLI separately.
+
+6) Prepare GitHub repo structure
+
+A simple GitHub repo layout:
+% cd ~/workspace/devops/platform-gitops
+
+platform-gitops/
+  apps/
+    sample-app/
+      deployment.yaml
+      service.yaml
+  workflows/
+    hello-template.yaml
+  argocd/
+    app-sample.yaml
+    app-workflows.yaml
+
+# Example workflow template
+% vi workflows/hello-template.yaml
+
+# Example Argo CD Application for workflows
+vi argocd/app-workflows.yaml
+
+# Argo CD Application resources are meant to be stored declaratively, usually in the argocd namespace.
+# Apply the Application:
+% kubectl apply -f argocd/app-workflows.yaml
+application.argoproj.io/argo-workflows-definitions created
+
+7) Connect Argo CD to GitHub
+Public repo
+No credentials needed. Just reference the GitHub HTTPS repo URL in the Application.
+Private repo
+Argo CD supports private repos over HTTPS or SSH, and also supports GitHub App credentials.
+Option A: SSH key
+% argocd repo add git@github.com:serhioms/platform-gitops.git \
+  --ssh-private-key-path ~/.ssh/id_ed25519
+Repository 'git@github.com:serhioms/platform-gitops.git' added
+
+
+
+
+
+
+
+
