@@ -153,15 +153,15 @@ Access Argo CD UI locally
 Forwarding from 127.0.0.1:8080 -> 8080
 Forwarding from [::1]:8080 -> 8080
 
-do chrom https://localhost:8080?admin=xssfsFBx7HCi568Z
+do chrom https://localhost:8080?admin=J01olOu2v2cnjqEQ
 
 Get initial admin password:
 % kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d && echo
-xssfsFBx7HCi568Z
+J01olOu2v2cnjqEQ
 
 # Login with CLI: argocd login localhost:8080 --username admin --password <PASSWORD> --insecure
-% argocd login localhost:8080 --username admin --password xssfsFBx7HCi568Z --insecure
+% argocd login localhost:8080 --username admin --password J01olOu2v2cnjqEQ --insecure
 'admin:login' logged in successfully
 Context 'localhost:8080' updated
 
@@ -287,8 +287,97 @@ Option A: SSH key
   --ssh-private-key-path ~/.ssh/id_ed25519
 Repository 'git@github.com:serhioms/platform-gitops.git' added
 
+% export YOUR_GITHUB_USER=serhioms
+% export YOUR_GITHUB_TOKEN=YOUR_GITHUB_TOKEN
+% argocd repo add https://github.com/YOUR_GITHUB_USER/platform-gitops.git \
+   --username $YOUR_GITHUB_USER \
+   --password $YOUR_GITHUB_TOKEN
 
+8) Test the full GitOps flow
+Make a change in GitHub, for example:
+edit hello-template.yaml
+commit to main
 
+% argocd app get argo-workflows-definitions
+Name:               argocd/argo-workflows-definitions
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          argo
+URL:                https://localhost:8080/applications/argo-workflows-definitions
+Source:
+- Repo:             https://github.com/serhioms/platform-gitops.git
+  Target:           main
+  Path:             workflows
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        Synced to main (081c88e)
+Health Status:      Healthy
+
+GROUP        KIND              NAMESPACE  NAME            STATUS  HEALTH  HOOK  MESSAGE
+argoproj.io  WorkflowTemplate  argo       hello-template  Synced                workflowtemplate.argoproj.io/hello-template unchanged
+
+% argocd app sync argo-workflows-definitions
+TIMESTAMP                  GROUP              KIND         NAMESPACE                  NAME    STATUS   HEALTH        HOOK  MESSAGE
+2026-03-15T11:47:20-04:00  argoproj.io  WorkflowTemplate        argo        hello-template    Synced
+2026-03-15T11:47:20-04:00  argoproj.io  WorkflowTemplate        argo        hello-template    Synced                       workflowtemplate.argoproj.io/hello-template unchanged
+
+Name:               argocd/argo-workflows-definitions
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          argo
+URL:                https://localhost:8080/applications/argo-workflows-definitions
+Source:
+- Repo:             https://github.com/serhioms/platform-gitops.git
+  Target:           main
+  Path:             workflows
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        Synced to main (081c88e)
+Health Status:      Healthy
+
+Operation:          Sync
+Sync Revision:      081c88e1c7bb9737c15f42dd2eba73432ed6a42c
+Phase:              Succeeded
+Start:              2026-03-15 11:47:20 -0400 EDT
+Finished:           2026-03-15 11:47:20 -0400 EDT
+Duration:           0s
+Message:            successfully synced (all tasks run)
+
+GROUP        KIND              NAMESPACE  NAME            STATUS  HEALTH  HOOK  MESSAGE
+argoproj.io  WorkflowTemplate  argo       hello-template  Synced                workflowtemplate.argoproj.io/hello-template unchanged
+
+Then check:
+
+That confirms:
+GitHub is source of truth
+Argo CD syncs manifests into cluster
+Argo Workflows resources are now live
+% kubectl get workflowtemplate -n argo
+NAME             AGE
+hello-template   2d21h
+
+9) Run a workflow
+Submit from the template:
+Or create a full Workflow object in Git and let Argo CD sync it,
+though for repeatable execution, WorkflowTemplate is usually cleaner.
+% argo submit --from workflowtemplate/hello-template -n argo --watch
+Name:                hello-template-wjsgh
+Namespace:           argo
+ServiceAccount:      unset
+Status:              Running
+Conditions:
+ PodRunning          False
+Created:             Sun Mar 15 12:15:33 -0400 (11 seconds ago)
+Started:             Sun Mar 15 12:15:33 -0400 (11 seconds ago)
+Duration:            11 seconds
+Progress:            0/1
+
+STEP                     TEMPLATE   PODNAME               DURATION  MESSAGE
+ ◷ hello-template-wjsgh  whalesay3  hello-template-wjsgh  11s
+ ErrImagePull: failed to pull and unpack image "docker.io/docker/whalesay2:latest":
+ failed to resolve reference "docker.io/docker/whalesay2:latest": pull access denied,
+ repository does not exist or may require authorization: server message: insufficient_scope:
+ authorization failed
 
 
 
