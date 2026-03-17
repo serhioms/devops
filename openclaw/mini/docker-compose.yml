@@ -2,9 +2,15 @@ services:
   openclaw:
     image: ghcr.io/openclaw/openclaw:latest
     container_name: openclaw
+    command: ["openclaw", "gateway", "--bind", "lan", "--port", "18789", "--allow-unconfigured"]
     ports:
-      - "3000:3000"
+      - "18789:18789"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - NODE_ENV=production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      NODE_ENV: production
+    volumes:
+      - openclaw_data:/root/.openclaw
     restart: unless-stopped
+
+volumes:
+  openclaw_data:
