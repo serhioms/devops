@@ -9,8 +9,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       NODE_ENV: production
     volumes:
-      - openclaw_data:/root/.openclaw
+      - mini_openclaw_data:/root/.openclaw
     restart: unless-stopped
 
 volumes:
-  openclaw_data:
+  mini_openclaw_data:

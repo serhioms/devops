@@ -1,0 +1,49 @@
+% do openclaw
+            Use: openclaw
+/Users/smoskovskiy/do/config/config.sh: line 204: openclaw: command not found
+
+% docker pull ghcr.io/openclaw/openclaw:latest
+latest: Pulling from openclaw/openclaw
+383822163a5a: Pull complete
+37a4308c8423: Pull complete
+8578011282ae: Pull complete
+53d4bef1e595: Pull complete
+628c149e1e33: Pull complete
+27f90850c80a: Pull complete
+869fdd20a733: Pull complete
+d8e107f402f4: Pull complete
+9f0db4d394ba: Pull complete
+4f4fb700ef54: Pull complete
+3498e5a179b7: Pull complete
+7030ac8485a9: Pull complete
+443d4217b87a: Pull complete
+0587cdf2b672: Pull complete
+b645ec5c5276: Pull complete
+0eb16f45de1d: Pull complete
+5e9d78968f4b: Pull complete
+abf3b6b1f618: Pull complete
+36039b6ce9ba: Pull complete
+8bc254b2184c: Pull complete
+a3d27b842bb7: Pull complete
+Digest: sha256:a5a4c83b773aca85a8ba99cf155f09afa33946c0aa5cc6a9ccb6162738b5da02
+Status: Downloaded newer image for ghcr.io/openclaw/openclaw:latest
+ghcr.io/openclaw/openclaw:latest
+
+
+% do openclaw install mini
+            Use: docker compose down -v
+[+] down 2/2
+ ✔ Network mini_default           Removed                                                      0.2s
+ ✔ Volume mini_mini_openclaw_data Removed                                                      0.0s
+            Use: docker compose up -d
+[+] up 3/3
+ ✔ Network mini_default           Created                                                      0.0s
+ ✔ Volume mini_mini_openclaw_data Created                                                      0.0s
+ ✔ Container openclaw             Created                                                      0.1s
+            Use: docker logs -f openclaw
+2026-04-09T20:49:06.556+00:00 [gateway] auth token was missing. Generated a new token and saved it
+to config (gateway.auth.token).
+2026-04-09T20:49:06.572+00:00 Gateway failed to start:
+Error: non-loopback Control UI requires gateway.controlUi.allowedOrigins (set explicit origins),
+or set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true to use Host-header origin fallback mode
+
